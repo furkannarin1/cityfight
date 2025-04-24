@@ -44,14 +44,6 @@ def get_job_offers(insee_code, token, rayon=10):
         st.text(f"Contenu brut: {response.text[:300]}...")  # Affiche les premiers caractères de la réponse
         return []
 
-# Forcer l'affichage en français
-try:
-    locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
-except:
-    try:
-        locale.setlocale(locale.LC_TIME, 'fr_FR')
-    except:
-        st.warning("⚠️ Impossible de définir la langue française pour les jours.")
 
 # Configuration de la page en mode "wide"
 st.set_page_config(page_title="Comparateur de Communes", layout="wide")
