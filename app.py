@@ -46,7 +46,7 @@ def get_job_offers(insee_code, token, rayon=10):
 
 
 # Configuration de la page en mode "wide"
-st.set_page_config(page_title="Comparateur de Communes", layout="wide")
+st.set_page_config(page_title="Comparateur de Villes", layout="wide")
 
 # Chargement des données depuis le CSV avec mise en cache
 @st.cache_data
