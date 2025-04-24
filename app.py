@@ -5,7 +5,7 @@ import locale
 import requests
 import pydeck as pdk
 
-# 🔐 Authentification OAuth2
+# 🔐Authentification OAuth2
 @st.cache_data
 def get_pe_token(ttl=3500):
     url = "https://entreprise.pole-emploi.fr/connexion/oauth2/access_token?realm=/partenaire"
