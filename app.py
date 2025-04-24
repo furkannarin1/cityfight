@@ -5,7 +5,10 @@ import locale
 import requests
 import pydeck as pdk
 
-# 🔐Authentification OAuth2
+# Configuration de la page en mode "wide"
+st.set_page_config(page_title="Comparateur de Communes", layout="wide")
+
+# 🔐 Authentification OAuth2
 @st.cache_data
 def get_pe_token(ttl=3500):
     url = "https://entreprise.pole-emploi.fr/connexion/oauth2/access_token?realm=/partenaire"
@@ -45,8 +48,6 @@ def get_job_offers(insee_code, token, rayon=10):
         return []
 
 
-# Configuration de la page en mode "wide"
-st.set_page_config(page_title="Comparateur de Villes", layout="wide")
 
 # Chargement des données depuis le CSV avec mise en cache
 @st.cache_data
@@ -243,6 +244,16 @@ def load_culture_data():
     df_culture = df_culture.dropna(subset=["latitude", "longitude"])  # supprime les lignes sans coord
     return df_culture
 
+@st.cache_data
+def load_formation_data():
+    df_form = pd.read_csv("data/base_formation.csv", sep=";", encoding="utf-8", low_memory=False)
+    df_form.columns = df_form.columns.str.strip()
+
+    # Séparation de latitude/longitude
+    df_form[['latitude', 'longitude']] = df_form["Localisation"].str.split(",", expand=True).astype(float)
+    df_form = df_form.dropna(subset=["latitude", "longitude"])
+    return df_form
+
 
 # Chargement des données
 df = load_data()
@@ -267,7 +278,7 @@ code_insee_left = data_gauche["code_insee"]
 code_insee_right = data_droite["code_insee"]
 
 # Création des onglets
-onglet1, onglet2, onglet3, onglet4, onglet5 = st.tabs(["📊 Données générales", "💼 Emploi", "🏠 Logement", "🌦️ Météo", "🎭 Culture"])
+onglet1, onglet2, onglet3, onglet4, onglet5, onglet6 = st.tabs(["📊 Données générales", "💼 Emploi", "🏠 Logement", "🌦️ Météo", "🎭 Culture", "🎓 Formation"])
 
 # Onglet 1: Données générales
 with onglet1:
@@ -654,4 +665,66 @@ with onglet5:
 
     with col2:
         show_culture_map(lieux_droite, commune_droite)
+
+
+import pydeck as pdk
+
+with onglet6:
+    st.header("🎓 Formations disponibles dans chaque commune")
+
+    df_form = load_formation_data()
+
+    # Filtrage par code INSEE des deux communes
+    villes_gauche = df_form[df_form["Commune"].str.lower() == commune_gauche.lower()]
+    villes_droite = df_form[df_form["Commune"].str.lower() == commune_droite.lower()]
+
+    # Liste des types de formation
+    all_types = sorted(df_form["Types de formation"].dropna().unique())
+    selected_types = st.multiselect("🎯 Filtrer par type de formation", all_types, default=all_types)
+
+    villes_gauche = villes_gauche[villes_gauche["Types de formation"].isin(selected_types)]
+    villes_droite = villes_droite[villes_droite["Types de formation"].isin(selected_types)]
+
+    col1, col2 = st.columns(2)
+
+    def show_formation_map(df, nom_commune):
+        if df.empty:
+            st.info(f"Aucune formation trouvée pour {nom_commune}.")
+            return
+
+        st.markdown(f"### {nom_commune} ({len(df)} formation(s))")
+
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=df,
+            get_position='[longitude, latitude]',
+            get_radius=100,
+            get_color=[100, 100, 250],
+            pickable=True,
+        )
+
+        tooltip = {
+            "html": "<b>{Nom de l'établissement}</b><br/>{Nom long de la formation}<br/><a href='{Lien vers la fiche formation}' target='_blank'>Voir fiche</a>",
+            "style": {"backgroundColor": "white", "color": "black"}
+        }
+
+        view_state = pdk.ViewState(
+            latitude=df["latitude"].mean(),
+            longitude=df["longitude"].mean(),
+            zoom=11,
+            pitch=0,
+        )
+
+        st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip))
+
+        st.dataframe(
+            df[["Nom de l'établissement", "Nom long de la formation", "Types de formation"]].dropna().reset_index(drop=True),
+            use_container_width=True
+        )
+
+    with col1:
+        show_formation_map(villes_gauche, commune_gauche)
+
+    with col2:
+        show_formation_map(villes_droite, commune_droite)
 
